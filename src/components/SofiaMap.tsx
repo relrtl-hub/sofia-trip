@@ -87,7 +87,7 @@ export function SofiaMap({ places, routeDisplays, selectedSegment = null, onSegm
             eventHandlers={{ click: () => onSegmentSelect?.(route.id, index) }}
             pathOptions={{
               color: isSelected ? '#f0a52b' : route.color,
-              dashArray: leg.source === 'fallback' ? '4 8' : leg.segment.optional ? '9 8' : undefined,
+              dashArray: leg.source === 'fallback' ? '4 8' : leg.segment.returnTrail ? '10 7' : leg.segment.optional ? '9 8' : undefined,
               opacity: isSelected ? 1 : leg.source === 'fallback' ? 0.48 : leg.segment.optional ? 0.72 : 0.88,
               weight: isSelected ? 9 : leg.source === 'fallback' ? 3 : leg.segment.optional ? 4 : 5,
             }}
@@ -99,9 +99,9 @@ export function SofiaMap({ places, routeDisplays, selectedSegment = null, onSegm
             <Popup>
               <div className="route-popup">
                 <div className="place-popup route-popup-summary">
-                  <span className="popup-category">{route.title} · {leg.source === 'fallback' ? leg.segment.mode === 'transit' ? `${leg.segment.transitType === 'metro' ? 'Metro' : 'Bus'} directions` : 'Approximate directions' : leg.segment.mode === 'walking' ? 'Walking directions' : leg.segment.mode === 'driving' ? 'Taxi directions' : `${leg.segment.transitType === 'metro' ? 'Metro' : 'Bus'} directions`}</span>
+                  <span className="popup-category">{route.title} · {leg.source === 'fallback' ? leg.segment.mode === 'transit' ? `${leg.segment.transitType === 'metro' ? 'Metro' : 'Bus'} ${leg.segment.transitLine ?? ''} directions`.trim() : 'Approximate directions' : leg.segment.mode === 'walking' ? 'Walking directions' : leg.segment.mode === 'driving' ? 'Driving directions' : `${leg.segment.transitType === 'metro' ? 'Metro' : 'Bus'} ${leg.segment.transitLine ?? ''} directions`.trim()}</span>
                   <strong>{formatDistance(leg.distanceMeters)} · {formatDuration(leg.durationSeconds)}</strong>
-                  <small>{leg.source === 'fallback' ? 'Approximate connector only, not a verified street route.' : leg.source === 'bundled' ? 'Verified street route, bundled for offline display.' : leg.segment.optional ? 'Optional segment, shown dashed.' : 'Tap the route to highlight this segment.'}</small>
+                  <small>{leg.source === 'fallback' ? 'Approximate connector only, not a verified street route.' : leg.source === 'bundled' ? leg.segment.returnTrail ? 'Verified marked return trail, shown dashed so it remains visible over the outbound trail.' : 'Verified street route, bundled for offline display.' : leg.segment.optional ? 'Optional segment, shown dashed.' : 'Tap the route to highlight this segment.'}</small>
                 </div>
                 <ol className="route-instructions">
                   {(leg.steps.length ? leg.steps : [{

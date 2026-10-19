@@ -60,8 +60,8 @@ type PlaceSearchResult = {
 
 const days: Array<{ id: DayKey; label: string; date: string; caption: string }> = [
   { id: 'day1', label: 'Day 1', date: '22 Oct', caption: 'Airport + central walk' },
-  { id: 'day2', label: 'Day 2', date: '23 Oct', caption: 'Open / flexible' },
-  { id: 'day3', label: 'Day 3', date: '24 Oct', caption: 'Boyana + southern return' },
+  { id: 'day2', label: 'Day 2', date: '23 Oct', caption: 'Boyana + southern return' },
+  { id: 'day3', label: 'Day 3', date: '24 Oct', caption: 'Open / flexible' },
   { id: 'day4', label: 'Day 4', date: '25 Oct', caption: 'Vitosha shopping' },
 ]
 
@@ -394,7 +394,7 @@ function App() {
                     type="button"
                   >
                     <span className="segment-number" aria-hidden="true">{index + 1}</span>
-                    <span className={`leg-mode ${leg.segment.mode}`}>{leg.segment.mode === 'walking' ? 'WALK' : leg.segment.mode === 'driving' ? 'TAXI' : leg.segment.transitType === 'metro' ? 'METRO' : 'BUS'}</span>
+                    <span className={`leg-mode ${leg.segment.mode}`}>{leg.segment.mode === 'walking' ? 'WALK' : leg.segment.mode === 'driving' ? 'DRIVE' : `${leg.segment.transitType === 'metro' ? 'METRO' : 'BUS'} ${leg.segment.transitLine ?? ''}`.trim()}</span>
                     <span className="leg-name">{allPlaces.find((place) => place.id === leg.segment.from)?.name} <b>→</b> {allPlaces.find((place) => place.id === leg.segment.to)?.name}</span>
                     <strong>{leg.source === 'fallback' ? `≈ ${formatDuration(leg.durationSeconds)}` : formatDuration(leg.durationSeconds)}</strong>
                     <small>{leg.source === 'fallback' ? `${leg.segment.instruction ? `${leg.segment.instruction} ` : ''}Approx. ${formatDistance(leg.distanceMeters)} · ${leg.segment.mode === 'transit' ? 'verify live Sofia transit times' : 'use Google Maps for street directions'}` : `${formatDistance(leg.distanceMeters)}${leg.segment.optional ? ' · optional' : ''}`}</small>
@@ -412,7 +412,7 @@ function App() {
             <div className="card-header"><div><p className="section-kicker">LIVE STATUS</p><h2>Weather + currency</h2></div><span className="sync-label"><i /> {weather && currency ? 'Updated' : 'Loading'}</span></div>
             <div className="weather-days">
               {weather?.days.map((day) => (
-                <div className="weather-day" key={day.date}><small>{new Date(`${day.date}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</small><strong>{Math.round(day.high)}° / {Math.round(day.low)}°</strong><span>{weatherDescription(day.code)} · rain {day.rainProbability}%</span><em>{day.rainWindow}</em></div>
+                <div className="weather-day" key={day.date}><small>{new Date(`${day.date}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</small><strong>{Math.round(day.high)}° / {Math.round(day.low)}°</strong><span>{weatherDescription(day.code)} · rain {day.rainProbability}%</span><em>{day.rainWindow === 'No significant rain window' ? day.rainWindow : `Rain expected: ${day.rainWindow}${day.rainHours ? ` · ${day.rainHours}h` : ''}`}</em></div>
               )) ?? <div className="data-loading">Fetching Sofia forecast for all four days...</div>}
             </div>
             <div className="currency-strip"><span><small>1 EUR</small><strong>{currency ? `${currency.ilsPerEur.toFixed(2)} ILS` : '...'}</strong></span><span><small>1 ILS</small><strong>{currency ? `${currency.eurPerIls.toFixed(4)} EUR` : '...'}</strong></span></div>

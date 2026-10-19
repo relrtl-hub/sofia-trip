@@ -9,6 +9,8 @@ export type RouteSegment = {
   to: string
   mode: TravelMode
   transitType?: TransitType
+  transitLine?: string
+  returnTrail?: boolean
   optional?: boolean
   instruction?: string
 }
@@ -27,9 +29,8 @@ export type TripRoute = {
 export type RoutePlan = TripRoute
 
 const walk = (from: string, to: string): RouteSegment => ({ from, to, mode: 'walking' })
-const drive = (from: string, to: string): RouteSegment => ({ from, to, mode: 'driving' })
-const metro = (from: string, to: string, instruction: string): RouteSegment => ({ from, to, mode: 'transit', transitType: 'metro', instruction })
-const bus = (from: string, to: string, instruction: string): RouteSegment => ({ from, to, mode: 'transit', transitType: 'bus', instruction })
+const metro = (from: string, to: string, transitLine: string, instruction: string): RouteSegment => ({ from, to, mode: 'transit', transitType: 'metro', transitLine, instruction })
+const bus = (from: string, to: string, transitLine: string, instruction: string): RouteSegment => ({ from, to, mode: 'transit', transitType: 'bus', transitLine, instruction })
 
 export const routes: TripRoute[] = [
   {
@@ -40,7 +41,7 @@ export const routes: TripRoute[] = [
     description: 'From Terminal 2, take Metro M4 to Serdika Metro Station, then walk to Art Hotel 158. Serdika is the station interpreted from “sverdraga”.',
     placeIds: ['sofia-airport', 'serdika-metro-station', 'hotel'],
     segments: [
-      metro('sofia-airport', 'serdika-metro-station', 'Take Sofia Metro M4 from Sofia Airport to Serdika Metro Station.'),
+      metro('sofia-airport', 'serdika-metro-station', 'M4', 'Take Sofia Metro M4 from Sofia Airport to Serdika Metro Station.'),
       { ...walk('serdika-metro-station', 'hotel'), instruction: 'Walk from Serdika Metro Station to Art Hotel 158.' },
     ],
     color: '#4d8b72',
@@ -88,24 +89,24 @@ export const routes: TripRoute[] = [
     color: '#ef8354',
   },
   {
-    id: 'day3-boyana-nature',
-    day: 'day3',
+    id: 'day2-boyana-nature',
+    day: 'day2',
     time: '07:30',
-    title: 'Serdika → Boyana Church → lake → waterfall → southern return',
-    description: 'Take the metro and bus to Boyana Church, walk to Boyana Lake and Boyana Waterfall, then return through the National Museum of History, Bulgaria Mall and Yuzhen Park.',
+    title: 'Serdika → Boyana Church → waterfall → lake → southern return',
+    description: 'Take the metro and bus to Boyana Church, follow the marked trail via Boyana Lake to Boyana Waterfall, then return through the lake, National Museum of History, Bulgaria Mall and Yuzhen Park.',
     placeIds: ['hotel', 'serdika-metro-station', 'vitosha-metro-station', 'boyana-church', 'boyana-lake', 'boyana-waterfall', 'national-museum-of-history', 'bulgaria-mall', 'yuzhen-park'],
     segments: [
       { ...walk('hotel', 'serdika-metro-station'), instruction: 'Walk from Art Hotel 158 to Serdika Metro Station.' },
-      metro('serdika-metro-station', 'vitosha-metro-station', 'Take Metro M2 toward Vitosha and get off at Vitosha Metro Station.'),
-      bus('vitosha-metro-station', 'boyana-church', 'Take bus 64 toward Boyana and get off at the Boyana Church stop.'),
-      { ...walk('boyana-church', 'boyana-lake'), instruction: 'Walk from Boyana Church to Boyana Lake.' },
-      { ...walk('boyana-lake', 'boyana-waterfall'), instruction: 'Follow the marked Vitosha trail uphill from Boyana Lake to Boyana Waterfall.' },
-      { ...walk('boyana-waterfall', 'boyana-lake'), instruction: 'Return downhill on the marked trail to Boyana Lake.' },
+      metro('serdika-metro-station', 'vitosha-metro-station', 'M2', 'Take Metro M2 toward Vitosha and get off at Vitosha Metro Station.'),
+      bus('vitosha-metro-station', 'boyana-church', '64', 'Take bus 64 toward Boyana and get off at the Boyana Church stop.'),
+      { ...walk('boyana-church', 'boyana-lake'), instruction: 'Follow the marked trail from Boyana Church to Boyana Lake.' },
+      { ...walk('boyana-lake', 'boyana-waterfall'), instruction: 'Continue uphill on the marked Vitosha trail from Boyana Lake to Boyana Waterfall.' },
+      { ...walk('boyana-waterfall', 'boyana-lake'), returnTrail: true, instruction: 'Return downhill on the marked trail from Boyana Waterfall to Boyana Lake.' },
       { ...walk('boyana-lake', 'boyana-church'), instruction: 'Walk back from Boyana Lake to Boyana Church.' },
-      drive('boyana-church', 'national-museum-of-history'),
-      drive('national-museum-of-history', 'bulgaria-mall'),
+      { ...walk('boyana-church', 'national-museum-of-history'), instruction: 'Walk to the National Museum of History.' },
+      { ...walk('national-museum-of-history', 'bulgaria-mall'), instruction: 'Walk south-east from the National Museum of History to Bulgaria Mall.' },
       { ...walk('bulgaria-mall', 'yuzhen-park'), instruction: 'Walk east from Bulgaria Mall into Yuzhen Park.' },
-      drive('yuzhen-park', 'hotel'),
+      { ...walk('yuzhen-park', 'hotel'), instruction: 'Follow the marked footpaths through Yuzhen Park to its northern exit, then continue on foot to Art Hotel 158.' },
     ],
     color: '#4d8b72',
   },
