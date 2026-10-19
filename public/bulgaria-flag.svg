@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>Bulgarian flag</title>
+  <defs>
+    <clipPath id="flag-shape">
+      <rect width="64" height="64" rx="14" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#flag-shape)">
+    <rect width="64" height="64" fill="#fff" />
+    <rect y="21.333" width="64" height="21.334" fill="#00966e" />
+    <rect y="42.667" width="64" height="21.333" fill="#d62612" />
+  </g>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="12.5" fill="none" stroke="#1d3037" stroke-width="3" />
+</svg>
