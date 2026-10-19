@@ -101,7 +101,7 @@ export function SofiaMap({ places, routeDisplays, selectedSegment = null, onSegm
                 <div className="place-popup route-popup-summary">
                   <span className="popup-category">{route.title} · {leg.source === 'fallback' ? leg.segment.mode === 'transit' ? `${leg.segment.transitType === 'metro' ? 'Metro' : 'Bus'} ${leg.segment.transitLine ?? ''} directions`.trim() : 'Approximate directions' : leg.segment.mode === 'walking' ? 'Walking directions' : leg.segment.mode === 'driving' ? 'Driving directions' : `${leg.segment.transitType === 'metro' ? 'Metro' : 'Bus'} ${leg.segment.transitLine ?? ''} directions`.trim()}</span>
                   <strong>{formatDistance(leg.distanceMeters)} · {formatDuration(leg.durationSeconds)}</strong>
-                  <small>{leg.source === 'fallback' ? 'Approximate connector only, not a verified street route.' : leg.source === 'bundled' ? leg.segment.returnTrail ? 'Verified marked return trail, shown dashed so it remains visible over the outbound trail.' : 'Verified street route, bundled for offline display.' : leg.segment.optional ? 'Optional segment, shown dashed.' : 'Tap the route to highlight this segment.'}</small>
+                  <small>{leg.source === 'fallback' ? 'Approximate connector only, not a verified street route.' : leg.source === 'bundled' ? leg.segment.returnTrail ? 'Verified mapped return trail, shown dashed so it remains visible over the outbound trail.' : 'Verified street route, bundled for offline display.' : leg.segment.optional ? 'Optional segment, shown dashed.' : 'Tap the route to highlight this segment.'}</small>
                 </div>
                 <ol className="route-instructions">
                   {(leg.steps.length ? leg.steps : [{
