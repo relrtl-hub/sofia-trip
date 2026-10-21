@@ -1,5 +1,5 @@
-import { CircleMarker, MapContainer, Popup, Polyline, TileLayer, Tooltip, useMap } from 'react-leaflet'
-import type { LatLngBoundsExpression } from 'leaflet'
+import { CircleMarker, MapContainer, Popup, Polyline, Tooltip, useMap } from 'react-leaflet'
+import { tileLayer, type LatLngBoundsExpression } from 'leaflet'
 import { useEffect } from 'react'
 import { categoryLabels, type Place } from '../data/places'
 import type { TripRoute } from '../data/routes'
@@ -13,7 +13,10 @@ type SofiaMapProps = {
   onPlaceSelect?: (place: Place) => void
   showPlaceLabels?: boolean
   highlightedPlaceId?: string | null
+  mapLayer?: MapLayer
 }
+
+export type MapLayer = 'imagery' | 'osm'
 
 const bounds: LatLngBoundsExpression = [
   [42.615, 23.245],
@@ -36,7 +39,11 @@ function FitSofia({ routePointCoordinates, fitKey }: { routePointCoordinates: st
     const routePoints = routePointCoordinates
       ? routePointCoordinates.split(';').map((point) => point.split(',').map(Number) as [number, number])
       : []
-    map.fitBounds(routePoints.length > 1 ? routePoints : bounds, { padding: [28, 28], maxZoom: 15 })
+    const frame = window.requestAnimationFrame(() => {
+      map.invalidateSize({ animate: false })
+      map.fitBounds(routePoints.length > 1 ? routePoints : bounds, { padding: [28, 28], maxZoom: 15 })
+    })
+    return () => window.cancelAnimationFrame(frame)
   }, [fitKey, map, routePointCoordinates])
 
   return null
@@ -52,10 +59,30 @@ function FocusPlace({ place }: { place?: Place }) {
   return null
 }
 
-export function SofiaMap({ places, routeDisplays, selectedSegment = null, onSegmentSelect, onPlaceSelect, showPlaceLabels = true, highlightedPlaceId = null }: SofiaMapProps) {
+function BasemapLayer({ mapLayer }: { mapLayer: MapLayer }) {
+  const map = useMap()
+
+  useEffect(() => {
+    const isOsm = mapLayer === 'osm'
+    const layer = tileLayer(
+      isOsm ? 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution: isOsm
+          ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          : 'Sources: <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics, and the GIS User Community',
+      },
+    ).addTo(map)
+    map.attributionControl.setPrefix(isOsm ? 'Street names via OpenStreetMap' : 'Imagery basemap')
+    return () => { map.removeLayer(layer) }
+  }, [map, mapLayer])
+
+  return null
+}
+
+export function SofiaMap({ places, routeDisplays, selectedSegment = null, onSegmentSelect, onPlaceSelect, showPlaceLabels = true, highlightedPlaceId = null, mapLayer = 'imagery' }: SofiaMapProps) {
   const routeStopIds = new Set(routeDisplays.flatMap(({ route }) => route.segments.flatMap((segment) => [segment.from, segment.to])))
   const activeRoute = routeDisplays[0]?.route
-  const selectedRouteSegment = selectedSegment?.routeId === activeRoute?.id ? activeRoute.segments[selectedSegment.segmentIndex] : undefined
+  const selectedRouteSegment = selectedSegment && activeRoute && selectedSegment.routeId === activeRoute.id ? activeRoute.segments[selectedSegment.segmentIndex] : undefined
   const fitPlaceIds = selectedRouteSegment
     ? [selectedRouteSegment.from, selectedRouteSegment.to]
     : activeRoute
@@ -63,8 +90,10 @@ export function SofiaMap({ places, routeDisplays, selectedSegment = null, onSegm
       : []
   const fitPlaceIdSet = new Set(fitPlaceIds)
   const routePoints = places.filter((place) => fitPlaceIdSet.has(place.id)).map((place): [number, number] => [place.lat, place.lon])
-  const routePointCoordinates = routePoints.map(([lat, lon]) => `${lat},${lon}`).join(';')
-  const fitKey = `${activeRoute?.id ?? 'all'}:${selectedSegment?.segmentIndex ?? 'route'}:${fitPlaceIds.join('|')}`
+  const visiblePlacePoints = places.map((place): [number, number] => [place.lat, place.lon])
+  const fitPoints = routePoints.length > 1 ? routePoints : visiblePlacePoints
+  const routePointCoordinates = fitPoints.map(([lat, lon]) => `${lat},${lon}`).join(';')
+  const fitKey = `${activeRoute?.id ?? 'places'}:${selectedSegment?.segmentIndex ?? 'route'}:${fitPlaceIds.join('|')}:${places.map((place) => place.id).join('|')}`
   const routeLegs = routeDisplays.flatMap(({ route, result }) => result.legs.flatMap((leg, index) => leg.geometry.length > 1 ? [{ route, leg, index }] : []))
   const orderedRouteLegs = [
     ...routeLegs.filter(({ route, index }) => !selectedSegment || selectedSegment.routeId !== route.id || selectedSegment.segmentIndex !== index),
@@ -72,11 +101,8 @@ export function SofiaMap({ places, routeDisplays, selectedSegment = null, onSegm
   ]
 
   return (
-    <MapContainer className="real-map" bounds={bounds} scrollWheelZoom>
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <MapContainer className="real-map" key={mapLayer} bounds={bounds} scrollWheelZoom>
+      <BasemapLayer key={mapLayer} mapLayer={mapLayer} />
       <FitSofia fitKey={fitKey} routePointCoordinates={routePointCoordinates} />
       <FocusPlace place={places.find((place) => place.id === highlightedPlaceId)} />
       {orderedRouteLegs.map(({ route, leg, index }) => {

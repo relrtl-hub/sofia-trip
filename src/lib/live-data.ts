@@ -51,16 +51,40 @@ const weatherLabel = (code: number) => {
 }
 
 function rainWindow(date: string, times: string[], probability: number[], precipitation: number[]) {
-  const rainHours = times.map((time, index) => ({ time, probability: probability[index] ?? 0, precipitation: precipitation[index] ?? 0 }))
-    .filter((item) => item.time.startsWith(date) && (item.probability >= 40 || item.precipitation > 0.1))
-  if (!rainHours.length) return 'No significant rain window'
-  const start = new Date(rainHours[0].time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-  const end = new Date(rainHours[rainHours.length - 1].time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-  return `${start}-${end}`
+  const daytimeRainHours = times.map((time, index) => ({
+    time,
+    hour: Number(time.slice(11, 13)),
+    probability: probability[index] ?? 0,
+    precipitation: precipitation[index] ?? 0,
+  })).filter((item) => item.time.startsWith(date) && item.hour >= 8 && (item.probability >= 40 || item.precipitation > 0.1))
+  if (!daytimeRainHours.length) return '08:00–17:00: no rain expected.'
+
+  const windows: Array<{ start: number; end: number }> = []
+  daytimeRainHours.forEach((item) => {
+    const hour = item.hour
+    const current = windows[windows.length - 1]
+    if (current && hour === current.end) current.end = hour + 1
+    else windows.push({ start: hour, end: hour + 1 })
+  })
+  const formatHour = (hour: number) => `${String(hour % 24).padStart(2, '0')}:00`
+  const joinWindows = (items: Array<{ start: number; end: number }>) => items
+    .map((window) => `${formatHour(window.start)}–${formatHour(window.end)}`)
+    .join(', ')
+  const daytimeWindows: Array<{ start: number; end: number }> = []
+  const laterWindows: Array<{ start: number; end: number }> = []
+  windows.forEach((window) => {
+    if (window.start < 17) daytimeWindows.push({ start: window.start, end: Math.min(window.end, 17) })
+    if (window.end > 17) laterWindows.push({ start: Math.max(window.start, 17), end: window.end })
+  })
+  const daytimeText = daytimeWindows.length
+    ? `08:00–17:00: rain possible ${joinWindows(daytimeWindows)}`
+    : '08:00–17:00: no rain expected'
+  const laterText = laterWindows.length ? ` Later: rain possible ${joinWindows(laterWindows)}` : ''
+  return `${daytimeText}.${laterText}`
 }
 
 export async function fetchWeather(): Promise<WeatherStatus> {
-  const cached = getCache<WeatherStatus>('weather')
+  const cached = getCache<WeatherStatus>('weather-v3')
   if (cached) return cached
   const params = new URLSearchParams({
     latitude: '42.6977', longitude: '23.3219',
@@ -84,7 +108,7 @@ export async function fetchWeather(): Promise<WeatherStatus> {
     }
   })
   const result = { days, fetchedAt: new Date().toISOString(), source: 'Open-Meteo' }
-  setCache('weather', result)
+  setCache('weather-v3', result)
   return result
 }
 

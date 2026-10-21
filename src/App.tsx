@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import './App.css'
 import 'leaflet/dist/leaflet.css'
-import { SofiaMap } from './components/SofiaMap'
+import { SofiaMap, type MapLayer } from './components/SofiaMap'
 import { places, type Place, type PlaceGroup } from './data/places'
 import { googleDirectionsUrl, routes, routesForDay, type DayKey } from './data/routes'
 import { fetchCurrency, fetchWeather, weatherDescription, type CurrencyStatus, type WeatherStatus } from './lib/live-data'
@@ -73,6 +73,7 @@ function App() {
   const [routeLoading, setRouteLoading] = useState(false)
   const [routeError, setRouteError] = useState<string | null>(null)
   const [showPlaceLabels, setShowPlaceLabels] = useState(true)
+  const [mapLayer] = useState<MapLayer>(() => new URLSearchParams(window.location.search).get('map') === 'osm' ? 'osm' : 'imagery')
   const [customPlaces, setCustomPlaces] = useState<Place[]>(loadCustomPlaces)
   const [mapMode, setMapMode] = useState<MapMode>('route')
   const [activePlaceFilter, setActivePlaceFilter] = useState<PlaceFilter | null>(null)
@@ -139,6 +140,7 @@ function App() {
   const filteredMapPlaces = mapMode === 'category' && activePlaceFilter && activePlaceFilter !== 'all'
     ? allPlaces.filter((place) => placeGroupFor(place) === activePlaceFilter)
     : allPlaces
+  const categoryIsEmpty = mapMode === 'category' && Boolean(activePlaceFilter && activePlaceFilter !== 'all' && filteredMapPlaces.length === 0)
   const visibleMapPlaces = [...new Map([...corePlaces, ...filteredMapPlaces].map((place) => [place.id, place])).values()]
   const mapRouteDisplays = mapMode === 'route' ? visibleRouteDisplays : []
   const mapCaption = mapMode === 'route'
@@ -318,10 +320,24 @@ function App() {
                 <p className="section-kicker">{mapCaption}</p>
                 <h2>{selectedDay.caption}</h2>
               </div>
-              <button className="ghost-button" type="button" onClick={() => { setMapMode('route'); setActivePlaceFilter(null) }}>Show route <span>↗</span></button>
+              <div className="map-header-actions">
+                <button
+                  aria-label={mapLayer === 'imagery' ? 'Switch to OpenStreetMap street map' : 'Switch to imagery basemap'}
+                  aria-pressed={mapLayer === 'osm'}
+                  className="ghost-button map-layer-header-button"
+                  onClick={() => { const url = new URL(window.location.href); url.searchParams.set('map', mapLayer === 'imagery' ? 'osm' : 'imagery'); window.location.assign(url.toString()) }}
+                  type="button"
+                  title={mapLayer === 'imagery' ? 'Show OpenStreetMap street names' : 'Show imagery basemap'}
+                >
+                  <span aria-hidden="true">{mapLayer === 'imagery' ? '⌖' : '▦'}</span>
+                  {mapLayer === 'imagery' ? 'Street map · OSM' : 'Imagery basemap'}
+                </button>
+                <button className="ghost-button" type="button" onClick={() => { setMapMode('route'); setActivePlaceFilter(null) }}>Show route <span>↗</span></button>
+              </div>
             </div>
             <div className="map-surface real-map-shell" aria-label="Interactive map of Sofia points of interest">
               <SofiaMap
+                key={mapLayer}
                 onSegmentSelect={(routeId, segmentIndex) => {
                   setActiveRouteId(routeId)
                   setSelectedSegment({ routeId, segmentIndex })
@@ -334,7 +350,9 @@ function App() {
                 selectedSegment={selectedSegment}
                 showPlaceLabels={showPlaceLabels}
                 highlightedPlaceId={highlightedPlaceId}
+                mapLayer={mapLayer}
               />
+              {categoryIsEmpty && <div className="map-empty-state" role="status">No saved places in this category yet. Use the search below to add one.</div>}
               <button
                 aria-label={showPlaceLabels ? 'Hide place names on the map' : 'Show place names on the map'}
                 aria-pressed={showPlaceLabels}
@@ -346,6 +364,7 @@ function App() {
                 <span aria-hidden="true">{showPlaceLabels ? '◉' : '○'}</span>
                 {showPlaceLabels ? 'Hide place names' : 'Show place names'}
               </button>
+
               <div className="map-legend map-legend-live"><span><i className="legend-dot amber" />Shopping</span><span><i className="legend-dot hotel-legend" />Hotel</span><span><i className="legend-dot plum" />History</span><span><i className="legend-line selected-route-legend" />Selected segment</span><span><i className="legend-line optional-route-legend" />Optional</span></div>
             </div>
             <div className="map-footer"><span><i className="legend-dot amber" /> {visibleMapPlaces.length} places shown · {mapMode === 'route' ? '1 route displayed' : 'place browsing mode'}</span><span>{mapMode !== 'route' ? (mapMode === 'place' ? 'Place highlighted' : 'Category places shown') : routeLoading ? 'Measuring street routes...' : activeRouteResult?.legs.some((leg) => leg.source === 'fallback') ? 'Approximate route shown · use Google Maps' : activeRouteResult ? `${formatDistance(activeRouteResult.distanceMeters)} walking route loaded` : 'Scroll, zoom, tap a marker'}</span></div>
@@ -412,7 +431,7 @@ function App() {
             <div className="card-header"><div><p className="section-kicker">LIVE STATUS</p><h2>Weather + currency</h2></div><span className="sync-label"><i /> {weather && currency ? 'Updated' : 'Loading'}</span></div>
             <div className="weather-days">
               {weather?.days.map((day) => (
-                <div className="weather-day" key={day.date}><small>{new Date(`${day.date}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</small><strong>{Math.round(day.high)}° / {Math.round(day.low)}°</strong><span>{weatherDescription(day.code)} · rain {day.rainProbability}%</span><em>{day.rainWindow === 'No significant rain window' ? day.rainWindow : `Rain expected: ${day.rainWindow}${day.rainHours ? ` · ${day.rainHours}h` : ''}`}</em></div>
+                <div className="weather-day" key={day.date}><small>{new Date(`${day.date}T12:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</small><strong>{Math.round(day.high)}° / {Math.round(day.low)}°</strong><span>{weatherDescription(day.code)} · rain {day.rainProbability}%</span><em>{day.rainWindow}</em></div>
               )) ?? <div className="data-loading">Fetching Sofia forecast for all four days...</div>}
             </div>
             <div className="currency-strip"><span><small>1 EUR</small><strong>{currency ? `${currency.ilsPerEur.toFixed(2)} ILS` : '...'}</strong></span><span><small>1 ILS</small><strong>{currency ? `${currency.eurPerIls.toFixed(4)} EUR` : '...'}</strong></span></div>
