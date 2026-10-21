@@ -56,6 +56,18 @@ type PlaceSearchResult = {
   lat: string
   lon: string
   type?: string
+  source?: string
+}
+
+type PhotonFeature = {
+  geometry?: { coordinates?: unknown }
+  properties?: {
+    name?: string
+    street?: string
+    city?: string
+    district?: string
+    country?: string
+  }
 }
 
 const days: Array<{ id: DayKey; label: string; date: string; caption: string }> = [
@@ -191,18 +203,38 @@ function App() {
     }
     setAddSearching(true)
     setAddError(null)
+    setAddResults([])
     try {
-      const params = new URLSearchParams({
-        format: 'jsonv2',
-        limit: '5',
-        countrycodes: 'bg',
-        q: `${query}, Sofia, Bulgaria`,
-      })
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`)
-      if (!response.ok) throw new Error(`Search failed: ${response.status}`)
-      const results = await response.json() as PlaceSearchResult[]
+      let results: PlaceSearchResult[] = []
+      try {
+        const photonParams = new URLSearchParams({ q: `${query}, Sofia`, limit: '5', lang: 'en' })
+        const photonResponse = await fetch(`https://photon.komoot.io/api/?${photonParams}`)
+        if (!photonResponse.ok) throw new Error(`Photon search failed: ${photonResponse.status}`)
+        const photonPayload = await photonResponse.json() as { features?: PhotonFeature[] }
+        results = (photonPayload.features ?? []).flatMap((feature) => {
+          const coordinates = feature.geometry?.coordinates
+          const properties = feature.properties ?? {}
+          if (!Array.isArray(coordinates) || coordinates.length < 2) return []
+          const [lon, lat] = coordinates
+          if (typeof lat !== 'number' || typeof lon !== 'number') return []
+          const displayName = [properties.name, properties.street, properties.city ?? properties.district, properties.country]
+            .filter(Boolean)
+            .join(', ')
+          return displayName ? [{ display_name: displayName, lat: String(lat), lon: String(lon), type: properties.name, source: 'OpenStreetMap / Photon' }] : []
+        })
+      } catch {
+        const nominatimParams = new URLSearchParams({
+          format: 'jsonv2',
+          limit: '5',
+          countrycodes: 'bg',
+          q: `${query}, Sofia, Bulgaria`,
+        })
+        const nominatimResponse = await fetch(`https://nominatim.openstreetmap.org/search?${nominatimParams}`)
+        if (!nominatimResponse.ok) throw new Error(`Search failed: ${nominatimResponse.status}`)
+        results = (await nominatimResponse.json() as PlaceSearchResult[]).map((result) => ({ ...result, source: 'OpenStreetMap / Nominatim' }))
+      }
       setAddResults(results)
-      if (!results.length) setAddError('No Sofia places found.')
+      if (!results.length) setAddError('No Sofia places found. Try the English or Bulgarian name.')
     } catch (error: unknown) {
       setAddError(error instanceof Error ? error.message : 'Place search unavailable')
     } finally {
@@ -226,7 +258,7 @@ function App() {
       lat,
       lon,
       note: 'Added from a Sofia place search.',
-      source: 'OpenStreetMap / Nominatim',
+      source: result.source ?? 'OpenStreetMap geocoder',
       googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`,
     }
     setCustomPlaces((current) => [...current, place])

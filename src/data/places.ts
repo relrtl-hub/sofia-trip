@@ -472,6 +472,20 @@ export const places: Place[] = [
   },
 
   {
+    id: 'central-market-hall',
+    name: 'Central Sofia Market Hall (Централни хали)',
+    category: 'shopping',
+    group: 'shopping',
+    tags: ['Market', 'Food hall', 'Central Sofia'],
+    address: 'Knyaginya Maria Luiza Boulevard 25, Sofia 1000, Bulgaria',
+    lat: 42.6999953,
+    lon: 23.3217985,
+    note: 'Historic central market hall, locally known as Tsentralni Hali, with food and shopping stalls near Banya Bashi Mosque.',
+    source: 'Central Sofia Market Hall official site; OpenStreetMap / Nominatim',
+    googleMapsUrl: googleMaps(42.6999953, 23.3217985, 'Central Sofia Market Hall Tsentralni Hali'),
+  },
+
+  {
     id: 'mall-of-sofia',
     name: 'Mall of Sofia',
     category: 'shopping',
